@@ -1,4 +1,86 @@
 #include "modmul.h"
+#include "string.h"
+
+int min(int a, int b){
+	return ((a) < (b) ? (a) : (b));
+}
+
+void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
+	int size = (int) pow(2, k) - 1;
+	mpz_t T[size]; 
+	mpz_t temp, t;
+
+	int l;
+
+	char s[1024];
+
+	mpz_init(temp);
+	mpz_init(t);
+	
+	////////////////////////////////////////////////////////////
+	/////// Precompute T = [[i]x | i in {1, 3, .., 2^k - 1}] ///
+	////////////////////////////////////////////////////////////
+
+	for (int i = 1; i <= size; i += 2){
+	 	mpz_init(T[i]);
+	 	mpz_set_ui(T[i], 1);
+	 	//mpz_set(T[i], x);
+	 	
+	}
+	printf("here\n");
+	for (int i = 1; i <= size; i += 2){
+	  	for (int j = 1; j <= i; j++ ){
+			mpz_mul(temp, T[i], x);
+			mpz_set(T[i], temp);	
+	  	}
+	//gmp_printf("%Zd\n", T[i]);
+	mpz_mod(T[i], T[i], N);
+	}
+	mpz_clear(temp);
+	//////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////
+	mpz_set_ui(t, 1); // set t to neutral element of the group
+	//printf("here");
+	mpz_get_str(s, 2, y); //convert y into base-2
+	//printf("%s", s);
+	// int i = strlen(s) - 1; // i = |y| - 1
+	//printf("%d\n", i);
+	int i = 0;
+	while (i <= (strlen(s)-1)){
+		if (s[i] == '0'){
+			mpz_mul(t, t, t);
+			mpz_mod(t, t, N);
+			i++;
+		}
+		else{
+			l = min( (int) i+k-1, strlen(s)-1);
+			while(s[l] == '0'){
+				l--; 
+			}
+			for (int h = 0; h < l-i+1; h++){
+				mpz_mul(t, t, t);
+				mpz_mod(t, t, N);
+			}
+			int u = 0;
+			int e = 1;
+			for(int bit = l; bit >= i; bit--){
+				if(s[bit]=='1'){
+					u=u+e;
+				}
+				e=e<<1;
+			}
+			if (u != 0){
+				mpz_mul(t, t, T[(u-1/2)]);
+				mpz_mod(t, t, N);	
+			}
+			i = l + 1;
+		}
+	}
+	gmp_printf("%Zd\n", t);
+	//mpz_clear(t);
+	//mpz_clear(T);
+}
 
 /*
 Perform stage 1:
@@ -23,9 +105,10 @@ void RSA_Encrypt(){
 		gmp_scanf("%Zx", m);
 	
 		//Encryption
-		mpz_powm(c, m, e, N);
+		//mpz_powm(c, m, e, N);
+		windowedExponent(m, e, 5, N);
 
-		gmp_printf("%Zx\n", c);
+		//gmp_printf("%Zx\n", c);
 	}
 
 	mpz_clear(N);
@@ -234,6 +317,21 @@ void stage4() {
 
 }
 
+void stage5(){
+	// mpz_t x, y, N;
+	// double k = 5;
+
+	// mpz_init(x);
+	// mpz_init(y);
+	// mpz_init(N);
+
+	// mpz_set_ui(x, 2);
+	// mpz_set_ui(y, 9);
+
+
+	// windowedExponent(x, y, k);
+}
+
 /*
 The main function acts as a driver for the assignment by simply invoking
 the correct function for the requested stage.
@@ -252,6 +350,10 @@ int main( int argc, char* argv[] ) {
   else if( !strcmp( argv[ 1 ], "stage4" ) ) {
     stage4();
   }
+   else if( !strcmp( argv[ 1 ], "stage5" ) ) {
+    stage5();
+  }
 
   return 0;
 }
+
