@@ -12,7 +12,7 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 
 	int l;
 
-	char s[1024];
+	char s[1026];
 
 	mpz_init(temp);
 	mpz_init(t);
@@ -27,27 +27,34 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 	 	//mpz_set(T[i], x);
 	 	
 	}
-	printf("here\n");
+	//printf(" ");
 	for (int i = 1; i <= size; i += 2){
 	  	for (int j = 1; j <= i; j++ ){
 			mpz_mul(temp, T[i], x);
 			mpz_set(T[i], temp);	
 	  	}
-	//gmp_printf("%Zd\n", T[i]);
 	mpz_mod(T[i], T[i], N);
+	//gmp_printf("%Zd\n", T[i]);
 	}
-	mpz_clear(temp);
+	//mpz_clear(temp);
+
 	//////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////
+
 	mpz_set_ui(t, 1); // set t to neutral element of the group
 	//printf("here");
+
 	mpz_get_str(s, 2, y); //convert y into base-2
-	//printf("%s", s);
-	// int i = strlen(s) - 1; // i = |y| - 1
+	
+	//printf("%s\n", s);
+	//int i = strlen(s) - 1; // i = |y| - 1
 	//printf("%d\n", i);
+	
 	int i = 0;
+	
 	while (i <= (strlen(s)-1)){
+		//printf("%Zd\n", strlen(s)-1);
 		if (s[i] == '0'){
 			mpz_mul(t, t, t);
 			mpz_mod(t, t, N);
@@ -77,7 +84,7 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 			i = l + 1;
 		}
 	}
-	gmp_printf("%Zd\n", t);
+	gmp_printf("%Zx\n", t);
 	//mpz_clear(t);
 	//mpz_clear(T);
 }
