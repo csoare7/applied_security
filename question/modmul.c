@@ -1,18 +1,64 @@
 #include "modmul.h"
 #include "string.h"
 
-int min(int a, int b){
-	return ((a) < (b) ? (a) : (b));
+#define noBits 1024
+
+void readDevRand(){
+	int bytes = 64;
+	char data[bytes];
+	FILE *fp;
+	fp=fopen("/dev/random", "r");
+	fread(data, 1, bytes, fp);
+	fclose(fp);
+
+	//for (int i = 0; i < bytes; i++){
+	//	printf("%d", data[i]);
+	//}
+}
+
+
+void getW(double k, mpz_t N){
+	mp_limb_t t = 1;
+	mp_limb_t limb_N = mpz_getlimbn(N, 0);
+
+	for (int i = 1; i <= k-1; i++){
+		t = (t*t*limb_N); 
+	}
+	//return -t;
+	gmp_printf ("limb %Md\n", -t);
+}
+
+// void getRhoSquared(double k, mpz_t N){
+// 	mp_limb_t t = 1;
+// 	int lN = mpz_size(N);
+// 	for (int i=1; i <= 2*lN*k; i++){
+// 		mpz_add(t, t, t);
+// 		mpz_mod(t, t, N);
+// 	}
+// 	//return t;
+// 	gmp_printf ("limb %Mu\n", t);
+// }
+
+
+
+
+
+void montgomeryMul(){
+
+}
+
+int max(int a, int b){
+	return ((a) > (b) ? (a) : (b));
 }
 
 void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
-	int size = (int) pow(2, k) - 1;
+	int size = (int) pow(2, k)/2;
 	mpz_t T[size]; 
 	mpz_t temp, t;
 
-	int l;
+	int l, u;
 
-	char s[1026];
+	//char s[1026];
 
 	mpz_init(temp);
 	mpz_init(t);
@@ -21,21 +67,15 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 	/////// Precompute T = [[i]x | i in {1, 3, .., 2^k - 1}] ///
 	////////////////////////////////////////////////////////////
 
-	for (int i = 1; i <= size; i += 2){
-	 	mpz_init(T[i]);
-	 	mpz_set_ui(T[i], 1);
-	 	//mpz_set(T[i], x);
-	 	
-	}
-	//printf(" ");
-	for (int i = 1; i <= size; i += 2){
-	  	for (int j = 1; j <= i; j++ ){
-			mpz_mul(temp, T[i], x);
-			mpz_set(T[i], temp);	
-	  	}
-	mpz_mod(T[i], T[i], N);
-	//gmp_printf("%Zd\n", T[i]);
-	}
+	mpz_init(T[0]);
+  mpz_set(T[0],x);
+
+  for (int i=1; i<size; i++) {
+    mpz_init(T[i]);
+    mpz_mul(T[i],T[i-1],x);
+    mpz_mul(T[i],T[i],x);
+    mpz_mod(T[i],T[i],N);
+  }
 	//mpz_clear(temp);
 
 	//////////////////////////////////////////////////////////
@@ -43,49 +83,80 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 	//////////////////////////////////////////////////////////
 
 	mpz_set_ui(t, 1); // set t to neutral element of the group
-	//printf("here");
-
-	mpz_get_str(s, 2, y); //convert y into base-2
-	
+	//mpz_get_str(s, 2, y); //convert y into base-2
+	//printf("dan\n");
 	//printf("%s\n", s);
-	//int i = strlen(s) - 1; // i = |y| - 1
 	//printf("%d\n", i);
-	
-	int i = 0;
-	
-	while (i <= (strlen(s)-1)){
-		//printf("%Zd\n", strlen(s)-1);
-		if (s[i] == '0'){
-			mpz_mul(t, t, t);
-			mpz_mod(t, t, N);
-			i++;
+	//int i = 0;	
+	// while (i <= (strlen(s)-1)){
+	// 	//printf("%Zd\n", strlen(s)-1);
+	// 	if (s[i] == '0'){
+	// 		mpz_mul(t, t, t);
+	// 		mpz_mod(t, t, N);
+	// 		i++;
+	// 	}
+	// 	else{
+	// 		l = min( (int) i+k-1, strlen(s)-1);
+	// 		while(s[l] == '0'){
+	// 			l--; 
+	// 		}
+	// 		for (int h = 0; h < l-i+1; h++){
+	// 			mpz_mul(t, t, t);
+	// 			mpz_mod(t, t, N);
+	// 		}
+	// 		int u = 0;
+	// 		int e = 1;
+	// 		for(int bit = l; bit >= i; bit--){
+	// 			if(s[bit]=='1'){
+	// 				u=u+e;
+	// 			}
+	// 			e=e<<1;
+	// 		}
+	// 		if (u != 0){
+	// 			mpz_mul(t, t, T[(u-1/2)]);
+	// 			mpz_mod(t, t, N);	
+	// 		}
+	// 		i = l + 1;
+	// 	}
+	// }
+	// gmp_printf("%Zx\n", t);
+	//mpz_clear(t);
+	//mpz_clear(T);
+	u = 0;
+	int i = noBits - 1; // i = |y| - 1
+	while (i >= 0){
+		if(mpz_tstbit(y,i) == 0){
+			l = i;
+			u = 0;
+			/*mpz_mul(t, t, t);
+	 		mpz_mod(t, t, N);*/
 		}
 		else{
-			l = min( (int) i+k-1, strlen(s)-1);
-			while(s[l] == '0'){
-				l--; 
-			}
-			for (int h = 0; h < l-i+1; h++){
-				mpz_mul(t, t, t);
-				mpz_mod(t, t, N);
-			}
-			int u = 0;
+			l = max(i-k+1, 0);
+			while(mpz_tstbit(y, l) == 0) l++;
+			u = 0;
 			int e = 1;
-			for(int bit = l; bit >= i; bit--){
-				if(s[bit]=='1'){
+			for(int bit = l; bit <= i; bit++){
+				if(mpz_tstbit(y, bit)){
 					u=u+e;
 				}
 				e=e<<1;
 			}
-			if (u != 0){
-				mpz_mul(t, t, T[(u-1/2)]);
-				mpz_mod(t, t, N);	
-			}
-			i = l + 1;
 		}
+
+		for (int h = 0; h < i-l+1; h++){
+	 		mpz_mul(t, t, t);
+	 		mpz_mod(t, t, N);
+	 	}
+    
+		if (u != 0){
+	 		mpz_mul(t, t, T[((u-1)/2)]);
+	 		mpz_mod(t, t, N);	
+	 	}
+		i = l - 1;
 	}
 	gmp_printf("%Zx\n", t);
-	//mpz_clear(t);
+	mpz_clear(t);
 	//mpz_clear(T);
 }
 
@@ -325,18 +396,16 @@ void stage4() {
 }
 
 void stage5(){
-	// mpz_t x, y, N;
-	// double k = 5;
+	//mpz_t N;
 
-	// mpz_init(x);
-	// mpz_init(y);
-	// mpz_init(N);
+	//mpz_init(N);
 
-	// mpz_set_ui(x, 2);
-	// mpz_set_ui(y, 9);
+	//gmp_scanf("%Zx", N);
 
 
-	// windowedExponent(x, y, k);
+	//getW(5, N);
+	//getRhoSquared();
+	readDevRand();
 }
 
 /*
