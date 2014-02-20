@@ -10,41 +10,108 @@ void readDevRand(){
 	fp=fopen("/dev/random", "r");
 	fread(data, 1, bytes, fp);
 	fclose(fp);
-
-	//for (int i = 0; i < bytes; i++){
-	//	printf("%d", data[i]);
-	//}
 }
 
 
-void getW(double k, mpz_t N){
+mp_limb_t getOmega(mpz_t N){
 	mp_limb_t t = 1;
 	mp_limb_t limb_N = mpz_getlimbn(N, 0);
 
-	for (int i = 1; i <= k-1; i++){
+	for (int i = 1; i <= mp_bits_per_limb-1; i++){
 		t = (t*t*limb_N); 
 	}
-	//return -t;
-	gmp_printf ("limb %Md\n", -t);
+	//gmp_printf ("%Mu\n", -t);
+	return -t;
 }
 
-// void getRhoSquared(double k, mpz_t N){
-// 	mp_limb_t t = 1;
-// 	int lN = mpz_size(N);
-// 	for (int i=1; i <= 2*lN*k; i++){
-// 		mpz_add(t, t, t);
-// 		mpz_mod(t, t, N);
-// 	}
-// 	//return t;
-// 	gmp_printf ("limb %Mu\n", t);
-// }
+void getRhoSquared( mpz_t *t, mpz_t N){
+	mpz_set_ui(*t,1);
+	int lN = mpz_size(N);
 
+	for (int i=1; i <= 2*lN*mp_bits_per_limb; i++){
+		mpz_add(*t, *t, *t);
+		mpz_mod(*t, *t, N);
+	}
+}
 
+void MontMul(mpz_t *r, mpz_t x, mpz_t y, mpz_t N){
+	int lN = mpz_size(N);
+	
+	mpz_t temp1, temp2;
+	mp_limb_t r0, yi, x0, omega, u;
+	
+	mpz_set_ui(*r, 0);
+	omega = getOmega(N);
+	mpz_init(temp1);mpz_init(temp2);
 
+	for(int i=0; i<lN; i++){
 
+		r0 = mpz_getlimbn(*r, 0);
+		//gmp_printf("r0= %Mu\n", r0);
+		yi = mpz_getlimbn(y, i);
+		x0 = mpz_getlimbn(x, 0);
 
-void montgomeryMul(){
+		u = (r0 + yi * x0) * omega;
+		
+	    //r = (r + yi * x + u * N)/b;
+		mpz_mul_ui(temp1, x, yi);
+		mpz_mul_ui(temp2, N, u);
+		mpz_add(temp1, temp1, temp2);
+		mpz_add(*r, *r, temp1);
 
+		int size = mpz_size(*r);
+		mp_limb_t a[size];
+		mpz_export(a, NULL, 1, sizeof(mp_limb_t), 1, 0, *r);
+		mpz_import(*r, size-1, 1, sizeof(mp_limb_t), 1, 0, a);
+
+	}
+	if(mpz_cmp(*r, N) >= 0 ){
+		mpz_sub(*r, *r, N);
+	}
+}
+
+void MontgomeryMul(mpz_t *r, mpz_t x, mpz_t y, mpz_t N){
+	mpz_t x_p, y_p, r_p, rho, one;
+	mpz_init(x_p);mpz_init(y_p);mpz_init(rho);mpz_init(r_p);mpz_init(one);
+	mpz_set_ui(one, 1);
+	getRhoSquared(&rho, N);
+
+	MontMul(&x_p, x, rho, N);
+	MontMul(&y_p, y, rho, N);
+	MontMul(&r_p, x_p, y_p, N);
+	MontMul(r, r_p, one, N);
+}
+
+void MontExp(mpz_t *r, mpz_t x, mpz_t y, mpz_t N){
+	mpz_t t_p, x_p, rho, one, temp;
+	mpz_init(t_p); 
+	mpz_init(x_p);
+	mpz_init(rho);
+	mpz_init(one);
+	mpz_init(temp);
+
+	getRhoSquared(&rho, N);
+	mpz_set_ui(one, 1);
+	
+	//mpz_mod(temp, x, N);
+	//mpz_set(x, temp);
+	
+	MontMul(&t_p, one, rho, N);
+	MontMul(&x_p, x, rho, N);
+
+	
+	// gmp_printf("t_p %Zx\n",x_p);
+	
+	for(int i = noBits-1; i >= 0; i--){
+		MontMul(r, t_p, t_p, N);
+		//mpz_set(t_p, temp);
+		if(mpz_tstbit(y, i)){
+			MontMul(&t_p, *r, x_p, N);
+		}
+		else mpz_set(t_p, *r);
+		//gmp_printf("i= %d\n t_p= %Zx\n",i , t_p);
+	}
+	MontMul(r, t_p, one, N);
 }
 
 int max(int a, int b){
@@ -68,11 +135,12 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 	////////////////////////////////////////////////////////////
 
 	mpz_init(T[0]);
-  mpz_set(T[0],x);
+  	mpz_set(T[0],x);
 
   for (int i=1; i<size; i++) {
     mpz_init(T[i]);
     mpz_mul(T[i],T[i-1],x);
+    //MontgomeryMul(&(T[i]), T[i-1], x, N);
     mpz_mul(T[i],T[i],x);
     mpz_mod(T[i],T[i],N);
   }
@@ -145,8 +213,9 @@ void windowedExponent(mpz_t x, mpz_t y, double k, mpz_t N){
 		}
 
 		for (int h = 0; h < i-l+1; h++){
-	 		mpz_mul(t, t, t);
-	 		mpz_mod(t, t, N);
+	 		//mpz_mul(t, t, t);
+	 		//mpz_mod(t, t, N);
+	 		MontgomeryMul(&t, t, t, N);
 	 	}
     
 		if (u != 0){
@@ -184,9 +253,10 @@ void RSA_Encrypt(){
 	
 		//Encryption
 		//mpz_powm(c, m, e, N);
-		windowedExponent(m, e, 5, N);
+		//windowedExponent(m, e, 6, N);
+		MontExp(&c, m, e, N );
 
-		//gmp_printf("%Zx\n", c);
+		gmp_printf("%Zx\n", c);
 	}
 
 	mpz_clear(N);
@@ -400,12 +470,13 @@ void stage5(){
 
 	//mpz_init(N);
 
-	//gmp_scanf("%Zx", N);
+	//gmp_scanf("%Zd", N);
 
 
-	//getW(5, N);
+	//getOmega(N);
+	//getRhoSquared(N);
 	//getRhoSquared();
-	readDevRand();
+	//readDevRand();
 }
 
 /*
