@@ -13,7 +13,7 @@ unsigned long int concat(char* s){
 	return tens;
 }
 
-void genRandom(){
+void genRandom(mpz_t randN){
 	int bytes = 8;
 	char data[bytes];
 	unsigned long int seed;
@@ -24,7 +24,7 @@ void genRandom(){
 
 	seed = concat(data);
 	//printf("%ld ", seed);
-	mpz_t randN;
+	//mpz_t randN;
 	
 	gmp_randstate_t state;
 
@@ -35,7 +35,8 @@ void genRandom(){
 	gmp_randseed_ui(state, (int)seed);
 
 	mpz_urandomb(randN, state, noBits);
-	gmp_printf("%Zd\n", randN);
+	//gmp_printf("%Zd\n", randN);
+	//return randN;
 
 }
 
@@ -392,7 +393,7 @@ Perform stage 3:
 */
 
 void ElGamal_Encrypt(){
-	mpz_t p, q, g, h, m, y, c1, c2, s, tmp;
+	mpz_t p, q, g, h, m, y, c1, c2, s, tmp, w;
 	
 	mpz_init(p); //large modulus
 	mpz_init(q); //small modulus
@@ -406,20 +407,27 @@ void ElGamal_Encrypt(){
 	mpz_init(s);
 	mpz_init(tmp);
 
+	mpz_init(w);
+
 	while(gmp_scanf("%Zx", p) != EOF){	
 		gmp_scanf("%Zx", q);
 		gmp_scanf("%Zx", g);
 		gmp_scanf("%Zx", h);
 		gmp_scanf("%Zx", m);
 
-		//choose random y. Set y=1 for now
-		mpz_set_str(y, "1",10);
+		//choose ephemeral randomness w. 
+		//genRandom(w);
 
 		//compute c1
 		mpz_set(c1, g);
+		//double power = pow(mpz_get_ui(g), mpz_get_ui(w));
+		//mpz_set_ui(c1, (int)power);
 
 		//compute c2
 		mpz_set(s, h);
+		//power = pow(mpz_get_ui(h), mpz_get_ui(w));
+		//mpz_set_ui(s, (int)power);
+
 		//mpz_mul(tmp, m, s);
 		//mpz_mod(c2, tmp, p);
 		MontgomeryMul(&c2, m, s, p);
@@ -511,7 +519,7 @@ void stage5(){
 	//getRhoSquared(N);
 	//getRhoSquared();
 	//readDevRand();
-	genRandom();
+	//genRandom();
 }
 
 /*
