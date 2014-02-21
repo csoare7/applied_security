@@ -290,10 +290,12 @@ void compute_CRT(mpz_t p, mpz_t q, mpz_t d_p, mpz_t d_q, mpz_t i_q, mpz_t c, mpz
 	mpz_powm(m2, c, d_q, q); //m2 = ( c^d_q ) ( mod q )
 
 	mpz_sub(temp1, m1, m2); // temp1 = m1 - m2
-	mpz_mul(temp2, i_q, temp1); // temp2 = i_q * (m1 - m2)
-	mpz_mod(h, temp2, p); // temp2 mod p
+	mpz_mul(temp2, i_q, temp1); // temp2 = i_q * (m1 - m2) 
 
-	mpz_mul(temp1, h, q); //h*q
+
+	mpz_mod(h, temp2, p); // temp2 mod p 
+
+	mpz_mul(temp1, h, q); //h*q //to replace
 
 	mpz_add(m, m2, temp1); // m = m2 + hq
 
@@ -332,7 +334,8 @@ void RSA_Decrypt(){
 		//compute m
 		//mpz_powm(m, c, d, N);
 
-		compute_CRT(p, q, d_p, d_q, i_q, c, m);
+		//compute_CRT(p, q, d_p, d_q, i_q, c, m);
+		MontExp(&m, c, d, N);
 		
 		gmp_printf("%Zx\n", m);	
 	}
@@ -390,8 +393,9 @@ void ElGamal_Encrypt(){
 
 		//compute c2
 		mpz_set(s, h);
-		mpz_mul(tmp, m, s);
-		mpz_mod(c2, tmp, p);
+		//mpz_mul(tmp, m, s);
+		//mpz_mod(c2, tmp, p);
+		MontgomeryMul(&c2, m, s, p);
 
 		gmp_printf("%Zx\n", c1);
 		gmp_printf("%Zx\n", c2);	
@@ -441,11 +445,13 @@ void ElGamal_Decrypt(){
 	  	gmp_scanf("%Zx", c1);
 	  	gmp_scanf("%Zx", c2);
 
-		mpz_powm(tmp, c1, x, p ); //compute s=c1^x
+		//mpz_powm(tmp, c1, x, p ); //compute s=c1^x
+		MontExp(&tmp, c1, x, p);
 		mpz_invert(s, tmp, p); // invert s=s-1
 
-		mpz_mul(tmp, c2, s);
-		mpz_mod(m, tmp, p);
+		//mpz_mul(tmp, c2, s);
+		//mpz_mod(m, tmp, p);
+		MontgomeryMul(&m, c2, s, p);
 
 	  	gmp_printf("%Zx\n", m);	
 	  }
@@ -466,6 +472,7 @@ void stage4() {
 }
 
 void stage5(){
+	//testing purposes
 	//mpz_t N;
 
 	//mpz_init(N);
