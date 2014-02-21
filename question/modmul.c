@@ -3,13 +3,40 @@
 
 #define noBits 1024
 
-void readDevRand(){
-	int bytes = 64;
+unsigned long int concat(char* s){
+	int len = strlen(s);
+	unsigned long int tens = 1;
+	for (int i = 0; i<len; ++i){
+		int aux = (int)s[i];
+		tens = tens*10 + abs(aux);
+	}
+	return tens;
+}
+
+void genRandom(){
+	int bytes = 8;
 	char data[bytes];
+	unsigned long int seed;
 	FILE *fp;
 	fp=fopen("/dev/random", "r");
 	fread(data, 1, bytes, fp);
 	fclose(fp);
+
+	seed = concat(data);
+	//printf("%ld ", seed);
+	mpz_t randN;
+	
+	gmp_randstate_t state;
+
+	// //seed = 123456;
+	mpz_init(randN);
+
+	gmp_randinit_default(state);
+	gmp_randseed_ui(state, (int)seed);
+
+	mpz_urandomb(randN, state, noBits);
+	gmp_printf("%Zd\n", randN);
+
 }
 
 
@@ -484,6 +511,7 @@ void stage5(){
 	//getRhoSquared(N);
 	//getRhoSquared();
 	//readDevRand();
+	genRandom();
 }
 
 /*
